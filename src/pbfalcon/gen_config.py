@@ -5,7 +5,7 @@ But for now, we just use a look-up table,
 based on ranges of the length of a genome.
 """
 from falcon_kit import run_support as support
-from . import tusks
+from . import tusks, reads
 import ConfigParser as configparser
 import logging
 import os
@@ -19,6 +19,11 @@ log = logging.getLogger(__name__)
 OPTION_GENOME_LENGTH = 'HGAP_GenomeLength_str'
 OPTION_CORES_MAX = 'HGAP_CoresMax_str'
 OPTION_CFG = 'HGAP_FalconAdvanced_str'
+
+# These are advanced options, not exposed in pbsmrtpipe.
+# Some are expected by FALCON.
+OPT_length_cutoff = 'length_cutoff'
+OPT_calc = 'calc'
 
 defaults_old = """\
 falcon_sense_option = --output_multi --min_idt 0.70 --min_cov 1 --local_match_count_threshold 100 --max_n_read 20000 --n_core 6
@@ -121,7 +126,7 @@ def _options_dict_with_base_keys(options_dict, prefix='falcon_ns.task_options.')
             new_dict[tail] = val
     return new_dict
 
-def _gen_config(options_dict):
+def gen_ConfigParser(options_dict):
     """Generate ConfigParser object from dict.
     """
     cfg = support.parse_config('')
@@ -136,7 +141,7 @@ def _gen_config(options_dict):
         cfg.set(sec, key, str(val).strip())
     return cfg
 
-def _write_config(config, config_fn):
+def write_config(config, config_fn):
     with open(config_fn, 'w') as ofh:
         # I wish ConfigParser would sort. Oh, well.
         config.write(ofh)
@@ -182,6 +187,18 @@ def get_falcon_overrides(cfg_content, OPTION_CFG=OPTION_CFG):
         overrides = dict()
     return overrides
 
+def calc_options(options, i_fofn_fn):
+    options = dict(options)
+    if options.get(OPT_calc, False) and options.get(OPTION_GENOME_LENGTH):
+        options[OPT_length_cutoff] = None
+        # others? ...
+    if not options.get(OPT_length_cutoff, None):
+        size = options[OPTION_GENOME_LENGTH]
+        desired_coverage = 30 # aka 30x
+        length_cutoff = reads.calc_length_cutoff(size, desired_coverage, i_fofn_fn)
+        options[OPT_length_cutoff] = length_cutoff
+    return options
+
 def run_falcon_gen_config(input_files, output_files, options):
     """Generate a config-file from options.
     """
@@ -199,7 +216,10 @@ def run_falcon_gen_config(input_files, output_files, options):
         falcon_options.update(overrides)
     else:
         raise Exception("Could not find %s" %OPTION_CFG)
-    config = _gen_config(falcon_options)
+    # Update any options which need to be calculated.
+    falcon_options = calc_options(falcon_options, i_fofn_fn)
+
+    config = gen_ConfigParser(falcon_options)
     with tusks.cd(os.path.dirname(i_fofn_fn)):
-        return _write_config(config, o_cfg_fn) # Write lower-case keys, which is fine.
+        return write_config(config, o_cfg_fn) # Write lower-case keys, which is fine.
 
