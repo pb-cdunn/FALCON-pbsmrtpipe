@@ -196,6 +196,7 @@ def calc_options(options, i_fofn_fn):
         size = options[OPTION_GENOME_LENGTH]
         desired_coverage = 30 # aka 30x
         length_cutoff = reads.calc_length_cutoff(size, desired_coverage, i_fofn_fn)
+        print('Calculated length cutoff: %s' %repr(length_cutoff))
         options[OPT_length_cutoff] = length_cutoff
     return options
 
