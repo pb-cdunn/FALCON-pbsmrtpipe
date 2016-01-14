@@ -395,7 +395,25 @@ def run_falcon_asm(input_files, output_files):
 def run_falconx(input_files, output_files):
     i_json_config_fn, i_fofn_fn = input_files
     o_fasta_fn, = output_files
-    run_cmd('touch %s' %o_fasta_fn, sys.stdout, sys.stderr, shell=False)
+    cfg_fn = 'fc.cfg'
+    logging_fn = '' # logging.ini'
+    falcon_options = _get_config_from_json_fileobj(open(i_json_config_fn))
+    from . import gen_config
+    cfg = gen_config.gen_ConfigParser(falcon_options)
+    cfg.set('General', 'input_fofn', i_fofn_fn)
+    gen_config.write_config(cfg, cfg_fn) # Write unsorted lower-case keys, which is fine.
+    cmd = 'fc_run {} {}'.format(cfg_fn, logging_fn)
+    run_cmd(cmd, sys.stdout, sys.stderr, shell=False)
+    #cmd = 'touch %s' %o_fasta_fn
+    #run_cmd(cmd, sys.stdout, sys.stderr, shell=False)
+    #return
+    p_ctg = '2-asm-falcon/p_ctg.fa'
+    assert_nonzero(p_ctg)
+    n_records = _linewrap_fasta(p_ctg, o_fasta_fn)
+    if n_records == 0:
+        # We already checked 0-length, but maybe this is still possible.
+        # Really, we want to detect 0 base-length, but I do not know how yet.
+        raise Exception("No records found in primary contigs: '%s'" %os.path.abspath(p_ctg))
     say('Finished run_falconx(%s, %s)' %(repr(input_files), repr(output_files)))
 
 def run_hgap(input_files, output_files):
