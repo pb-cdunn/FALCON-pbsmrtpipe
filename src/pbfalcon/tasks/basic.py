@@ -41,7 +41,7 @@ def run_rtc(rtc):
   with cd(os.path.dirname(rtc.task.output_files[0])):
     return pbfalcon.run_falcon_config_get_fasta(rtc.task.input_files, rtc.task.output_files)
 
-@registry('task_falcon_config', '0.0.0', [FT_CFG, FT_FOFN], [FT_JSON], is_distributed=False)
+@registry('task_falcon_config', '0.0.0', [FT_CFG, FT_FOFN], [FT_JSON], is_distributed=False, nproc=1)
 def run_rtc(rtc):
   with cd(os.path.dirname(rtc.task.output_files[0])):
     return pbfalcon.run_falcon_config(rtc.task.input_files, rtc.task.output_files)
