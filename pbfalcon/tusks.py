@@ -404,7 +404,7 @@ def run_falcon_asm(input_files, output_files):
 
 def run_hgap(input_files, output_files):
     i_cfg_fn, i_logging_fn, i_subreadset_fn = input_files
-    o_fasta_fn, = output_files
+    o_fasta_fn, o_json_fn = output_files
     # Update the cfg with our subreadset.
     # Run pypeflow.hgap.main.
     cmd = 'python -m pbfalcon.cli.hgap_run --logging {} {}'.format(i_logging_fn, i_cfg_fn)
