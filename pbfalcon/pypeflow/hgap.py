@@ -150,6 +150,10 @@ DEFAULT_OPTIONS = """
     "options": "--algorithm arrow --minConfidence 40 --minCoverage 5",
     "~comment": "Overrides for genomic consensus (polishing)"
   },
+  "pbreports.tasks.summarize_coverage": {
+    "options": "--num_regions=1000 --region_size=0",
+    "~comment": "Overrides for summarize_coverage report"
+  },
   "pbcoretools.tasks.filterdataset": {
     "other_filters": "rq >= 0.7, length lte 50000",
     "read_length": 1

@@ -185,6 +185,14 @@ def run_gc(alignmentset, referenceset, polished_fastq, variants_gff, consensus_c
         alignmentset,
     ]
     sys.system(' '.join(args))
+def run_summarize_coverage(aln_set, ref_set, aln_summ_gff, options):
+    args = [
+        'python',
+        '-m pbreports.report.summarize_coverage.summarize_coverage',
+        options,
+        aln_set, ref_set, aln_summ_gff,
+    ]
+    sys.system(' '.join(args))
 def run_filterbam(ifn, ofn, config):
     """
     pbcoretools.tasks.filterdataset
@@ -279,7 +287,12 @@ def task_genomic_consensus(self):
     options = task_opts.get('options', '')
     run_gc(alignmentset, referenceset, polished_fastq, variants_gff, consensus_contigset, options)
 def task_summarize_coverage(self):
-    pass
+    ref_set_fn = fn(self.referenceset)
+    aln_set_fn = fn(self.gathered_alignmentset)
+    aln_summ_gff_fn = fn(self.alignment_summary_gff)
+    task_opts = self.parameters['pbreports.tasks.summarize_coverage']
+    options = task_opts.get('options', '')
+    run_summarize_coverage(aln_set_fn, ref_set_fn, aln_summ_gff_fn, options)
 def task_polished_assembly_report(self):
     pass
 def task_foo(self):
@@ -403,13 +416,14 @@ def flow(config):
 
     # Gathering
     gathered_fastq_pfn = makePypeLocalFile("tasks/pbcoretools.tasks.gather_fastq-1/file.fastq")
-    gathered_alignmentset_pfn = makePypeLocalFile("tasks/pbcoretools.tasks.gather_alignmentset-1/file.alignmentset.xml")
+    #gathered_alignmentset_pfn = makePypeLocalFile("tasks/pbcoretools.tasks.gather_alignmentset-1/file.alignmentset.xml")
+    gathered_alignmentset_pfn = alignmentset_pfn #"./aligned.subreads.alignmentset.xml"
     #pbcoretools.tasks.gather_gff-1
     #pbcoretools.tasks.gather_fastq-1
 
     # pbreports
 
-    alignment_summary_gff_pfn = makePypeLocalFile("tasks/pbreports.tasks.summarize_coverage-0/alignment_summary.gff")
+    alignment_summary_gff_pfn = makePypeLocalFile("alignment_summary.gff")
     make_task = PypeTask(
             inputs = {"referenceset": referenceset_pfn,
                       "gathered_alignmentset": gathered_alignmentset_pfn,},
@@ -418,7 +432,7 @@ def flow(config):
             TaskType = PypeThreadTaskBase,
             URL = "task://localhost/summarize_coverage")
     task = make_task(task_summarize_coverage)
-    #wf.addTask(task)
+    wf.addTask(task)
 
     polished_assembly_report_json_pfn = makePypeLocalFile('polished_assembly_report.json')
     make_task = PypeTask(
@@ -430,8 +444,8 @@ def flow(config):
             TaskType = PypeThreadTaskBase,
             URL = "task://localhost/polished_assembly_report")
     task = make_task(task_polished_assembly_report)
-    #wf.addTask(task)
-    #wf.refreshTargets()
+    wf.addTask(task)
+    wf.refreshTargets()
 
     #return
     ##############
