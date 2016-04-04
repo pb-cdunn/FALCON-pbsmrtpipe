@@ -154,6 +154,10 @@ DEFAULT_OPTIONS = """
     "options": "--num_regions=1000 --region_size=0",
     "~comment": "Overrides for summarize_coverage report"
   },
+  "pbreports.tasks.polished_assembly": {
+    "options": "",
+    "~comment": "Overrides for polished_assembly report"
+  },
   "pbcoretools.tasks.filterdataset": {
     "other_filters": "rq >= 0.7, length lte 50000",
     "read_length": 1

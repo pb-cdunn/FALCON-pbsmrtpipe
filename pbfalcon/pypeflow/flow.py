@@ -185,12 +185,18 @@ def run_gc(alignmentset, referenceset, polished_fastq, variants_gff, consensus_c
         alignmentset,
     ]
     sys.system(' '.join(args))
-def run_summarize_coverage(aln_set, ref_set, aln_summ_gff, options):
+def run_summarize_coverage(aln_set_fn, ref_set_fn, aln_summ_gff_fn, options):
     args = [
-        'python',
-        '-m pbreports.report.summarize_coverage.summarize_coverage',
+        'python -m pbreports.report.summarize_coverage.summarize_coverage',
         options,
-        aln_set, ref_set, aln_summ_gff,
+        aln_set_fn, ref_set_fn, aln_summ_gff_fn,
+    ]
+    sys.system(' '.join(args))
+def run_polished_assembly_report(gff_fn, fastq_fn, json_fn, options):
+    args = [
+        'python -m pbreports.report.polished_assembly',
+        options,
+        gff_fn, fastq_fn, json_fn,
     ]
     sys.system(' '.join(args))
 def run_filterbam(ifn, ofn, config):
@@ -294,7 +300,12 @@ def task_summarize_coverage(self):
     options = task_opts.get('options', '')
     run_summarize_coverage(aln_set_fn, ref_set_fn, aln_summ_gff_fn, options)
 def task_polished_assembly_report(self):
-    pass
+    gff_fn = fn(self.alignment_summary_gff)
+    fastq_fn = fn(self.gathered_polished_fastq)
+    json_fn = fn(self.polished_assembly_report_json)
+    task_opts = self.parameters['pbreports.tasks.polished_assembly']
+    options = task_opts.get('options', '')
+    run_polished_assembly_report(gff_fn, fastq_fn, json_fn, options)
 def task_foo(self):
     log.debug('WARNME1 {!r}'.format(__name__))
     #print repr(self.parameters), repr(self.URL), repr(self.foo1)
@@ -437,8 +448,7 @@ def flow(config):
     polished_assembly_report_json_pfn = makePypeLocalFile('polished_assembly_report.json')
     make_task = PypeTask(
             inputs = {"alignment_summary_gff": alignment_summary_gff_pfn,
-                      "polished_fastq": polished_fastq_pfn,},
-                      #"gathered_fastq": gathered_fastq_pfn,},
+                      "gathered_polished_fastq": polished_fastq_pfn,},
             outputs = {"polished_assembly_report_json": polished_assembly_report_json_pfn,},
             parameters = parameters,
             TaskType = PypeThreadTaskBase,
