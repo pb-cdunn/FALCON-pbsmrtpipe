@@ -88,7 +88,7 @@ def ContentUpdater(fn):
 def run_falcon(i_fasta_fn, o_fasta_fn, config_falcon):
     sys.system('rm -f {}'.format(
         o_fasta_fn))
-    input_fofn_fn = 'input.fofn'
+    input_fofn_fn = 'input.fofn' # also used in run_preassembly_report()
     with ContentUpdater(input_fofn_fn) as f:
         f.write('{}\n'.format(i_fasta_fn))
     config_falcon['input_fofn'] = input_fofn_fn
@@ -102,6 +102,17 @@ def run_falcon(i_fasta_fn, o_fasta_fn, config_falcon):
     sys.system(cmd)
     sys.system('ln {} {}'.format(
         '2-asm-falcon/p_ctg.fa', o_fasta_fn))
+def run_preassembly_report(o_json_fn, cfg):
+    i_raw_reads_fofn_fn = 'input.fofn' # run_falcon() uses this name
+    i_preads_fofn_fn = '1-preads_ovl/input_preads.fofn'
+    kwds = {
+        'cfg': cfg,
+        'i_raw_reads_fofn_fn': i_raw_reads_fofn_fn,
+        'i_preads_fofn_fn': i_preads_fofn_fn,
+        'o_json_fn': o_json_fn,
+    }
+    from .. import report_preassembly
+    report_preassembly.for_task(**kwds)
 def run_pbalign(reads, asm, alignmentset, options, algorithmOptions):
     """
  BlasrService: Align reads to references using blasr.
@@ -213,6 +224,31 @@ def task_falcon(self):
     input_file_name = fn(self.orig_fasta)
     output_file_name = fn(self.asm_fasta)
     run_falcon(input_file_name, output_file_name, self.parameters['falcon'])
+
+def parse_length_cutoff(fn):
+    return int(open(fn).read().strip())
+def update_length_cutoff(cfg, fn):
+    length_cutoff = int(cfg.get('length_cutoff', '0'))
+    if length_cutoff < 0:
+        try:
+            length_cutoff = parse_length_cutoff(fn)
+            log.info('length_cutoff=%d from %r' %(length_cutoff, fn))
+        except Exception:
+            log.exception('Unable to read length_cutoff from "%s".' %fn)
+    cfg['length_cutoff'] = length_cutoff
+
+def task_preassembly_report(self):
+    #fn(self.asm_fasta)
+    o_json_fn = fn(self.preassembly_report)
+    length_cutoff_fn = fn(self.length_cutoff)
+    try:
+        cfg = self.parameters['falcon']
+        update_length_cutoff(cfg, length_cutoff_fn) # Not persistent, but nobody else needs length_cutoff.
+        run_preassembly_report(o_json_fn, cfg)
+    except:
+        log.exception('Problem producing preassembly report. Writing empty report to "{}".'.format(o_json_fn))
+        with open(o_json_fn, 'w') as ofs:
+            ofs.write('{}')
 def task_fasta2referenceset(self):
     """Copied from pbsmrtpipe/pb_tasks/pacbio.py:run_fasta_to_referenceset()
     """
@@ -283,18 +319,34 @@ def flow(config):
     wf.addTask(task)
     wf.refreshTargets()
 
-    # We could integrate the FALCON workflow here, but for now we will just execute it.
     asm_fasta_pfn = makePypeLocalFile('asm.fasta')
+    length_cutoff_pfn = makePypeLocalFile('0-rawreads/length_cutoff')
     make_task = PypeTask(
             inputs =  {"orig_fasta": orig_fasta_pfn,},
-            outputs =  {"asm_fasta": asm_fasta_pfn,},
+            outputs =  {"asm_fasta": asm_fasta_pfn,
+                       "length_cutoff": length_cutoff_pfn,
+            },
             parameters = parameters,
             TaskType = PypeThreadTaskBase,
             URL = "task://localhost/falcon")
-    #task = make_task(task_falcon)
-    #wf.addTask(task)
-    #wf.refreshTargets()
-    run_falcon(fn(orig_fasta_pfn), fn(asm_fasta_pfn), config['falcon'])
+    task = make_task(task_falcon)
+    wf.addTask(task)
+    wf.refreshTargets()
+    # We could integrate the FALCON workflow here, but for now we will just execute it.
+    #run_falcon(fn(orig_fasta_pfn), fn(asm_fasta_pfn), config['falcon'])
+
+    preassembly_report_pfn = makePypeLocalFile('preassembly_report.json')
+    make_task = PypeTask(
+            inputs =  {"asm_fasta": asm_fasta_pfn,
+                       "length_cutoff": length_cutoff_pfn,
+            },
+            outputs =  {"preassembly_report": preassembly_report_pfn,},
+            parameters = parameters,
+            TaskType = PypeThreadTaskBase,
+            URL = "task://localhost/preassembly_report")
+    task = make_task(task_preassembly_report)
+    wf.addTask(task)
+    wf.refreshTargets()
 
     # The reset of the workflow will operate on datasets, not fasta directly.
     referenceset_pfn = makePypeLocalFile('asm.referenceset.xml')

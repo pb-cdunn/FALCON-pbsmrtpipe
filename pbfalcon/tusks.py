@@ -403,27 +403,23 @@ def run_falcon_asm(input_files, output_files):
     return 0
 
 def run_hgap(input_files, output_files):
-    i_cfg_fn, i_logging_fn, i_subreadset_fn = input_files
+    i_json_cfg_fn, i_logging_fn, i_subreadset_fn = input_files
     o_fasta_fn, o_json_fn = output_files
-    # Update the cfg with our subreadset.
+
     # Run pypeflow.hgap.main.
-    cmd = 'python -m pbfalcon.cli.hgap_run --logging {} {}'.format(i_logging_fn, i_cfg_fn)
-    #cmd = 'python -m pbfalcon.cli.hgap_run {}'.format(i_cfg_fn)
-    system(cmd)
-    final_asm_fn = os.path.join('2-asm-falcon', 'p_ctg.fa') # TODO: Polish!
-    cmd = 'mkdir -p %s; touch %s' %(os.path.dirname(final_asm_fn), final_asm_fn)
-    system(cmd)
+    cmd = 'python -m pbfalcon.cli.hgap_run --logging {} {}'.format(i_logging_fn, i_json_cfg_fn)
+    #cmd = 'python -m pbfalcon.cli.hgap_run {}'.format(i_json_cfg_fn)
+    rc = system(cmd)
+
     # Link the output fasta to the final assembly of HGAP.
+    final_asm_fn = os.path.join('2-asm-falcon', 'p_ctg.fa') # TODO: Polish!
     symlink(final_asm_fn, o_fasta_fn)
 
-    kwds = {
-        'i_json_config_fn': i_json_config_fn,
-        'i_raw_reads_fofn_fn': i_raw_reads_fofn_fn,
-        'i_preads_fofn_fn': i_preads_fofn_fn,
-        'o_json_fn': o_json_fn,
-    }
-    report_preassembly.for_task(**kwds)
-    return 0
+    # Link the preassembly report.
+    preassembly_report_fn = 'preassembly_report.json' # by convention, for now
+    symlink(preassembly_report_fn, o_json_fn)
+
+    return rc
 
 def _get_length_cutoff_from_somewhere(length_cutoff, tasks_dir):
     if length_cutoff < 0:

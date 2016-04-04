@@ -30,6 +30,10 @@ def symlink(actual, symbolic=None):
     lg('ln -s %s %s' %(rel, symbolic))
     if os.path.lexists(symbolic):
         os.unlink(symbolic)
+    if os.path.exists(symbolic) and os.path.samefile(symbolic, actual):
+        say("Warning: Cannot symlink('{}', '{}') because they are already the same file.".format(
+            actual, symbolic))
+        return
     os.symlink(rel, symbolic)
 
 def system(cmd):

@@ -26,13 +26,14 @@ from __future__ import division
 from pbcore.io import FastaReader
 from pbcommand.models.report import Report, Attribute
 
+import argparse
 import collections
 import itertools
 import json
-import sys
-import os
 import logging
-import argparse
+import os
+import pprint
+import sys
 
 log = logging.getLogger(__name__)
 __version__ = '0.1'
@@ -80,6 +81,7 @@ def _validate_file(file_name):
         raise IOError(msg)
 
 def cutoff_reads(read_lens, min_read_len):
+    log.info('len(read_lens): {}, min_read_len: {}'.format(len(read_lens), min_read_len))
     return [rl for rl in read_lens if rl >= min_read_len]
 
 def read_len_above(read_lens, threshold):
@@ -91,6 +93,9 @@ def read_len_above(read_lens, threshold):
             return rl
 
 def percentile(read_lens, p):
+    msg = 'Calculating percentile at p: {}, len(read_lens): {}'.format(p, len(read_lens))
+    log.info(msg)
+    #raise Exception(msg)
     return read_lens[int(len(read_lens)*p)]
 
 def stats_from_sorted_readlengths(read_lens):
