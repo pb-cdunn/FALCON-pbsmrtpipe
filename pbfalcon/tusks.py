@@ -415,13 +415,40 @@ def run_hgap(input_files, output_files):
     system(cmd)
     # Link the output fasta to the final assembly of HGAP.
     symlink(final_asm_fn, o_fasta_fn)
+
+    kwds = {
+        'i_json_config_fn': i_json_config_fn,
+        'i_raw_reads_fofn_fn': i_raw_reads_fofn_fn,
+        'i_preads_fofn_fn': i_preads_fofn_fn,
+        'o_json_fn': o_json_fn,
+    }
+    report_preassembly.for_task(**kwds)
     return 0
+
+def _get_length_cutoff_from_somewhere(length_cutoff, tasks_dir):
+    if length_cutoff < 0:
+        fn = os.path.join(tasks_dir, 'falcon_ns.tasks.task_falcon0_build_rdb-0', 'length_cutoff')
+        try:
+            length_cutoff = int(open(fn).read().strip())
+            log.info('length_cutoff=%d from %r' %(length_cutoff, fn))
+        except Exception:
+            log.exception('Unable to read length_cutoff from "%s".' %fn)
+    return length_cutoff # possibly updated
+
+def _get_cfg(i_json_config_fn):
+    import pprint
+    cfg = json.loads(open(i_json_config_fn).read())
+    length_cutoff = int(cfg.get('length_cutoff', '0'))
+    length_cutoff = _get_length_cutoff_from_somewhere(length_cutoff, os.path.dirname(os.path.dirname(i_json_config_fn)))
+    cfg['length_cutoff'] = length_cutoff
+    return cfg
 
 def run_report_preassembly_yield(input_files, output_files):
     i_json_config_fn, i_preads_fofn_fn, i_raw_reads_fofn_fn = input_files
     o_json_fn, = output_files
+    cfg = _get_cfg(i_json_config_fn)
     kwds = {
-        'i_json_config_fn': i_json_config_fn,
+        'cfg': cfg,
         'i_raw_reads_fofn_fn': i_raw_reads_fofn_fn,
         'i_preads_fofn_fn': i_preads_fofn_fn,
         'o_json_fn': o_json_fn,
